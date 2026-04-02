@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(openspec list:*)",
+      "Bash(openspec new:*)",
+      "Bash(openspec status:*)",
+      "Bash(openspec instructions:*)",
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(npm test:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(mkdir -p openspec/changes/archive)",
+      "Bash(cp -r openspec/changes/rgv-simulation openspec/changes/archive/2026-04-01-rgv-simulation)",
+      "Bash(rm -rf openspec/changes/rgv-simulation)"
+    ]
+  }
+}
