@@ -10,7 +10,7 @@ interface Props {
 export default function AxisParamsInput({ label, value, onChange }: Props) {
   return (
     <div className="mb-2">
-      <div className="text-xs font-semibold text-gray-500 mb-1">{label}</div>
+      {label && <div className="text-xs font-semibold text-gray-500 mb-1">{label}</div>}
       <div className="grid grid-cols-3 gap-1">
         {(['maxSpeed', 'accel', 'decel'] as const).map(key => (
           <label key={key} className="flex flex-col">

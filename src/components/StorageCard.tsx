@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../context/AppContext'
 import type { StorageLocation, StorageLayer, StorageSide, LayerCount } from '../types'
 import NumberInput from './NumberInput'
 
 interface Props {
   storage: StorageLocation
+  isOpen: boolean
+  onToggle: () => void
 }
 
 const defaultLayer: StorageLayer = {
@@ -50,11 +52,23 @@ function LayerForm({
   )
 }
 
-export default function StorageCard({ storage }: Props) {
+export default function StorageCard({ storage, isOpen, onToggle }: Props) {
   const { state, dispatch } = useApp()
-  const [open, setOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [name, setName] = useState(storage.name)
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  // Scroll into view when opened externally (e.g. SVG click)
+  useEffect(() => {
+    if (isOpen) {
+      cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [isOpen])
+
+  // Keep local name in sync if storage name changes externally
+  useEffect(() => {
+    setName(storage.name)
+  }, [storage.name])
 
   const update = (patch: Partial<StorageLocation>) => {
     dispatch({ type: 'UPDATE_STORAGE', payload: { ...storage, ...patch } })
@@ -68,43 +82,69 @@ export default function StorageCard({ storage }: Props) {
     }
   }
 
+  const handleDuplicate = () => {
+    dispatch({
+      type: 'ADD_STORAGE',
+      payload: { ...storage, id: `s${Date.now()}`, name: `${storage.name} 副本` },
+    })
+  }
+
   return (
-    <div className="border border-gray-200 rounded mb-1 text-sm">
-      <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50">
+    <div ref={cardRef} className={`rounded mb-1 text-sm border-l-2 ${isOpen ? 'border-blue-400 border border-blue-200' : 'border-transparent border border-gray-200'}`}>
+      <div className={`flex items-center justify-between px-2 py-1.5 ${isOpen ? 'bg-blue-50' : 'bg-gray-50'}`}>
         <button
           className="flex-1 text-left font-medium truncate"
-          onClick={() => setOpen(o => !o)}
+          onClick={() => { onToggle(); setConfirmDelete(false) }}
         >
-          {storage.name || '（未命名）'}
+          <span className={isOpen ? 'text-blue-700' : ''}>{storage.name || '（未命名）'}</span>
           <span className="text-xs text-gray-400 ml-2">
-            {storage.side === 'left' ? '左' : '右'} | X:{storage.position} | {storage.layers}層
+            {storage.side === 'left' ? '左' : '右'} | X:{storage.position} | {storage.layers}層 | {storage.width}×{storage.depth}mm
           </span>
         </button>
         <div className="flex gap-1 shrink-0">
           <button
-            onClick={() => { setOpen(o => !o); setConfirmDelete(false) }}
+            onClick={() => { onToggle(); setConfirmDelete(false) }}
             className="text-xs px-1.5 py-0.5 rounded bg-gray-200 hover:bg-gray-300"
           >
-            {open ? '收' : '編輯'}
+            {isOpen ? '收' : '編輯'}
           </button>
           <button
-            onClick={handleDelete}
-            className={`text-xs px-1.5 py-0.5 rounded ${confirmDelete ? 'bg-red-500 text-white' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
+            onClick={handleDuplicate}
+            className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-600 hover:bg-blue-200"
+            title="複製此庫位"
           >
-            {confirmDelete ? '確認刪除' : '刪除'}
+            複製
           </button>
-          {confirmDelete && (
-            <button
-              onClick={() => setConfirmDelete(false)}
-              className="text-xs px-1.5 py-0.5 rounded bg-gray-200 hover:bg-gray-300"
-            >
-              取消
-            </button>
-          )}
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-600 hover:bg-red-200"
+          >
+            刪除
+          </button>
         </div>
       </div>
 
-      {open && (
+      {confirmDelete && (
+        <div className="flex items-center justify-between px-2 py-1.5 bg-red-50 border-t border-red-200 text-xs">
+          <span className="text-red-600">確定要刪除「{storage.name || '未命名'}」？</span>
+          <div className="flex gap-1">
+            <button
+              onClick={handleDelete}
+              className="px-2 py-0.5 rounded bg-red-500 text-white hover:bg-red-600"
+            >
+              確認刪除
+            </button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              className="px-2 py-0.5 rounded bg-gray-200 hover:bg-gray-300 text-gray-600"
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isOpen && (
         <div className="p-2 space-y-2">
           <div className="grid grid-cols-2 gap-1">
             <label className="flex flex-col col-span-2">
@@ -151,6 +191,26 @@ export default function StorageCard({ storage }: Props) {
                 <option value={1}>1 層</option>
                 <option value={2}>2 層</option>
               </select>
+            </label>
+            <label className="flex flex-col">
+              <span className="text-xs text-gray-400">寬度 (mm)</span>
+              <NumberInput
+                value={storage.width}
+                min={50}
+                step={50}
+                onChange={n => update({ width: n })}
+                className="w-full"
+              />
+            </label>
+            <label className="flex flex-col">
+              <span className="text-xs text-gray-400">深度 (mm)</span>
+              <NumberInput
+                value={storage.depth}
+                min={50}
+                step={50}
+                onChange={n => update({ depth: n })}
+                className="w-full"
+              />
             </label>
           </div>
 

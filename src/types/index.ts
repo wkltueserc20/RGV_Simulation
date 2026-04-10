@@ -44,9 +44,11 @@ export type LayerCount = 1 | 2
 export interface StorageLocation {
   id: string
   name: string
-  position: number       // mm along track (from left end)
+  position: number       // mm along track (from left end), center point
   side: StorageSide
   layers: LayerCount
+  width: number          // mm along track direction
+  depth: number          // mm perpendicular to track (into shelf)
   layer1: StorageLayer
   layer2: StorageLayer   // only used when layers === 2
 }
@@ -72,11 +74,40 @@ export interface TaskResult {
   concurrentTotal: number  // seconds
 }
 
+// ─── Flow Task ────────────────────────────────────────────────────────────────
+
+export interface FlowStep {
+  pickStorageId: string
+  pickLayer: 1 | 2
+  placeStorageId: string
+  placeLayer: 1 | 2
+}
+
+export interface FlowStepResult {
+  pickStorageId: string
+  pickLayer: 1 | 2
+  placeStorageId: string
+  placeLayer: 1 | 2
+  startX: number           // RGV X at start of this step
+  endX: number             // RGV X at end (= placeStorage.position)
+  sequentialSteps: StepResult[]
+  concurrentSteps: StepResult[]
+  sequentialTotal: number
+  concurrentTotal: number
+}
+
+export interface FlowTaskResult {
+  steps: FlowStepResult[]
+  grandSequentialTotal: number
+  grandConcurrentTotal: number
+}
+
 // ─── History ─────────────────────────────────────────────────────────────────
 
-export interface HistoryEntry {
+export interface SingleHistoryEntry {
+  type: 'single'
   id: string
-  timestamp: number        // Unix ms
+  timestamp: number
   pickStorageName: string
   pickLayer: 1 | 2
   placeStorageName: string
@@ -84,6 +115,27 @@ export interface HistoryEntry {
   sequentialTotal: number
   concurrentTotal: number
 }
+
+export interface FlowHistoryStep {
+  pickStorageName: string
+  pickLayer: 1 | 2
+  placeStorageName: string
+  placeLayer: 1 | 2
+  nextPickStorageName?: string  // for "移動 庫B → 庫C" display
+  sequentialTotal: number
+  concurrentTotal: number
+}
+
+export interface FlowHistoryEntry {
+  type: 'flow'
+  id: string
+  timestamp: number
+  steps: FlowHistoryStep[]
+  grandSequentialTotal: number
+  grandConcurrentTotal: number
+}
+
+export type HistoryEntry = SingleHistoryEntry | FlowHistoryEntry
 
 // ─── Animation ───────────────────────────────────────────────────────────────
 
@@ -105,4 +157,5 @@ export interface AppState {
   storages: StorageLocation[]
   history: HistoryEntry[]
   lastResult: TaskResult | null
+  lastFlowResult: FlowTaskResult | null
 }

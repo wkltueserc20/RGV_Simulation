@@ -3,6 +3,7 @@ import type { AppState, AnimationState } from '../types'
 interface Props {
   state: AppState
   anim: AnimationState | null
+  flowStepIndex?: number
 }
 
 const SVG_W = 340
@@ -19,8 +20,13 @@ function mmToSvgY(mm: number) {
   return FLOOR_Y - mm * HEIGHT_SCALE
 }
 
-export default function SideViewSVG({ state, anim }: Props) {
-  const result = state.lastResult
+export default function SideViewSVG({ state, anim, flowStepIndex }: Props) {
+  // Support both single and flow task results
+  const singleResult = state.lastResult
+  const flowStepResult = flowStepIndex !== undefined
+    ? state.lastFlowResult?.steps[flowStepIndex] ?? null
+    : null
+  const result = singleResult ?? flowStepResult
   if (!result) {
     return (
       <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="w-full border border-gray-200 rounded bg-white">
@@ -59,12 +65,52 @@ export default function SideViewSVG({ state, anim }: Props) {
     lines.push({ mm: travelHeight, color: '#9ca3af', label: `行走高 ${travelHeight}mm` })
   }
 
+  // Storage bay outlines — drawn before fork so fork appears on top
+  const storageBays: { storage: typeof pickStorage; color: string; strokeColor: string; label: string }[] = []
+  if (pickStorage) storageBays.push({ storage: pickStorage, color: '#eff6ff', strokeColor: '#93c5fd', label: '取' })
+  if (placeStorage && placeStorage.id !== pickStorage?.id) {
+    storageBays.push({ storage: placeStorage, color: '#f0fdf4', strokeColor: '#86efac', label: '放' })
+  }
+
   return (
     <svg
       viewBox={`0 0 ${SVG_W} ${SVG_H}`}
       className="w-full border border-gray-200 rounded bg-white"
       style={{ fontFamily: 'sans-serif' }}
     >
+      {/* Storage bay outlines */}
+      {storageBays.map(({ storage: s, color, strokeColor, label }) => {
+        if (!s) return null
+        const bayDepth = (s.depth ?? 500) * DEPTH_SCALE
+        const bayX = forkStartX
+        const maxH = s.layers === 2
+          ? Math.max(s.layer1.placeHeight, s.layer2.placeHeight)
+          : s.layer1.placeHeight
+        const bayTop = mmToSvgY(maxH)
+        const bayHeight = FLOOR_Y - bayTop
+        const dividerY = s.layers === 2 ? mmToSvgY(s.layer1.placeHeight) : null
+        return (
+          <g key={s.id}>
+            <rect
+              x={bayX} y={bayTop}
+              width={bayDepth} height={bayHeight}
+              fill={color} stroke={strokeColor}
+              strokeWidth={1} opacity={0.8}
+            />
+            {dividerY !== null && (
+              <line
+                x1={bayX} y1={dividerY}
+                x2={bayX + bayDepth} y2={dividerY}
+                stroke={strokeColor} strokeWidth={0.8} strokeDasharray="3 2"
+              />
+            )}
+            <text x={bayX + 3} y={bayTop + 9} fontSize={7} fill={strokeColor} fontWeight="bold">
+              {label} {s.name}
+            </text>
+          </g>
+        )
+      })}
+
       {/* Ground */}
       <line x1={0} y1={FLOOR_Y} x2={SVG_W} y2={FLOOR_Y} stroke="#9ca3af" strokeWidth={2} />
 

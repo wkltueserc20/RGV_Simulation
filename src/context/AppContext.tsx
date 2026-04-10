@@ -1,6 +1,6 @@
 import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
 import type {
-  AppState, RGVConfig, TrackConfig, StorageLocation, HistoryEntry, TaskResult
+  AppState, RGVConfig, TrackConfig, StorageLocation, HistoryEntry, TaskResult, FlowTaskResult
 } from '../types'
 
 // ─── Default values ──────────────────────────────────────────────────────────
@@ -23,6 +23,7 @@ const defaultState: AppState = {
   storages: [],
   history: [],
   lastResult: null,
+  lastFlowResult: null,
 }
 
 // ─── Actions ─────────────────────────────────────────────────────────────────
@@ -36,6 +37,7 @@ type Action =
   | { type: 'ADD_HISTORY'; payload: HistoryEntry }
   | { type: 'CLEAR_HISTORY' }
   | { type: 'SET_LAST_RESULT'; payload: TaskResult | null }
+  | { type: 'SET_LAST_FLOW_RESULT'; payload: FlowTaskResult | null }
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -64,7 +66,9 @@ function reducer(state: AppState, action: Action): AppState {
     case 'CLEAR_HISTORY':
       return { ...state, history: [] }
     case 'SET_LAST_RESULT':
-      return { ...state, lastResult: action.payload }
+      return { ...state, lastResult: action.payload, lastFlowResult: null }
+    case 'SET_LAST_FLOW_RESULT':
+      return { ...state, lastFlowResult: action.payload, lastResult: null }
     default:
       return state
   }
@@ -82,7 +86,13 @@ function loadState(): AppState {
     return {
       ...defaultState,
       ...parsed,
-      lastResult: null, // never restore animation result
+      storages: (parsed.storages ?? []).map(s => ({
+        width: 600,
+        depth: 500,
+        ...s,
+      })),
+      lastResult: null,
+      lastFlowResult: null,
     }
   } catch {
     return defaultState

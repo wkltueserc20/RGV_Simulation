@@ -23,9 +23,9 @@ export default function AnimationControls({
   return (
     <div className="flex flex-col gap-1">
       {/* Progress bar */}
-      <div className="w-full bg-gray-200 rounded-full h-1.5">
+      <div className="w-full bg-gray-200 rounded-full h-3 cursor-pointer">
         <div
-          className="bg-blue-500 h-1.5 rounded-full transition-none"
+          className="bg-blue-500 h-3 rounded-full transition-none"
           style={{ width: `${progress * 100}%` }}
         />
       </div>

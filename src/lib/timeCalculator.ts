@@ -1,5 +1,5 @@
 import type {
-  AxisParams, RGVConfig, StorageLocation, StepResult, TaskResult, AnimationState
+  AxisParams, RGVConfig, StorageLocation, StepResult, TaskResult, FlowStep, FlowStepResult, FlowTaskResult, AnimationState
 } from '../types'
 
 // ─── Core physics ────────────────────────────────────────────────────────────
@@ -86,10 +86,12 @@ export function calcSequentialTask(
   pickLayer: 1 | 2,
   placeStorage: StorageLocation,
   placeLayer: 1 | 2,
+  startX?: number,
 ): StepResult[] {
   const pick = pickLayer === 1 ? pickStorage.layer1 : pickStorage.layer2
   const place = placeLayer === 1 ? placeStorage.layer1 : placeStorage.layer2
-  const travelToPickDist = Math.abs(pickStorage.position - rgv.startPosition)
+  const fromX = startX ?? rgv.startPosition
+  const travelToPickDist = Math.abs(pickStorage.position - fromX)
   const travelToPlaceDist = Math.abs(placeStorage.position - pickStorage.position)
 
   return buildSteps(rgv, travelToPickDist, travelToPlaceDist, pick, place).map(s => ({
@@ -112,10 +114,12 @@ export function calcConcurrentTask(
   pickLayer: 1 | 2,
   placeStorage: StorageLocation,
   placeLayer: 1 | 2,
+  startX?: number,
 ): StepResult[] {
   const pick = pickLayer === 1 ? pickStorage.layer1 : pickStorage.layer2
   const place = placeLayer === 1 ? placeStorage.layer1 : placeStorage.layer2
-  const travelToPickDist = Math.abs(pickStorage.position - rgv.startPosition)
+  const fromX = startX ?? rgv.startPosition
+  const travelToPickDist = Math.abs(pickStorage.position - fromX)
   const travelToPlaceDist = Math.abs(placeStorage.position - pickStorage.position)
 
   const defs = buildSteps(rgv, travelToPickDist, travelToPlaceDist, pick, place)
@@ -172,9 +176,10 @@ export function calcTask(
   pickLayer: 1 | 2,
   placeStorage: StorageLocation,
   placeLayer: 1 | 2,
+  startX?: number,
 ): TaskResult {
-  const sequentialSteps = calcSequentialTask(rgv, pickStorage, pickLayer, placeStorage, placeLayer)
-  const concurrentSteps = calcConcurrentTask(rgv, pickStorage, pickLayer, placeStorage, placeLayer)
+  const sequentialSteps = calcSequentialTask(rgv, pickStorage, pickLayer, placeStorage, placeLayer, startX)
+  const concurrentSteps = calcConcurrentTask(rgv, pickStorage, pickLayer, placeStorage, placeLayer, startX)
 
   const sequentialTotal = sequentialSteps.reduce((sum, s) => sum + s.duration, 0)
   const concurrentTotal = Math.max(...concurrentSteps.map(s => s.startAt + s.duration))
@@ -188,6 +193,44 @@ export function calcTask(
     concurrentSteps,
     sequentialTotal,
     concurrentTotal,
+  }
+}
+
+// ─── Flow task calculation ────────────────────────────────────────────────────
+
+export function calcFlowTask(
+  rgv: RGVConfig,
+  flowSteps: FlowStep[],
+  storages: StorageLocation[],
+): FlowTaskResult {
+  const results: FlowStepResult[] = []
+  let currentX = rgv.startPosition
+
+  for (const step of flowSteps) {
+    const pickStorage = storages.find(s => s.id === step.pickStorageId)
+    const placeStorage = storages.find(s => s.id === step.placeStorageId)
+    if (!pickStorage || !placeStorage) continue
+
+    const task = calcTask(rgv, pickStorage, step.pickLayer, placeStorage, step.placeLayer, currentX)
+    results.push({
+      pickStorageId: step.pickStorageId,
+      pickLayer: step.pickLayer,
+      placeStorageId: step.placeStorageId,
+      placeLayer: step.placeLayer,
+      startX: currentX,
+      endX: placeStorage.position,
+      sequentialSteps: task.sequentialSteps,
+      concurrentSteps: task.concurrentSteps,
+      sequentialTotal: task.sequentialTotal,
+      concurrentTotal: task.concurrentTotal,
+    })
+    currentX = placeStorage.position
+  }
+
+  return {
+    steps: results,
+    grandSequentialTotal: results.reduce((s, r) => s + r.sequentialTotal, 0),
+    grandConcurrentTotal: results.reduce((s, r) => s + r.concurrentTotal, 0),
   }
 }
 
