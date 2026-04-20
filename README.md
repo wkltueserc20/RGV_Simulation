@@ -2,7 +2,6 @@
 
 Rail Guided Vehicle 行走模擬與時間計算工具
 
-**線上展示：** https://wkltueserc20.github.io/RGV_Simulation/
 
 ## 功能
 
