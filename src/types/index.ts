@@ -145,6 +145,7 @@ export interface AnimationState {
   forkY: number   // mm (fork extension)
   phase: string   // current step name
   done: boolean
+  pickLayerHasGoods?: boolean  // injected by App — travels with anim so RGVAssembly reads it from animRef
 }
 
 export type SpeedMultiplier = 1 | 2 | 5 | 10

@@ -75,7 +75,10 @@ function reducer(state: AppState, action: Action): AppState {
         ...defaultState,
         rgv: { ...defaultState.rgv, ...action.payload.rgv },
         track: { ...defaultState.track, ...action.payload.track },
-        storages: action.payload.storages.map(s => ({ width: 600, depth: 500, ...(s as any) })),
+        storages: action.payload.storages.map(s => {
+          const b = s as any
+          return { width: 600, depth: 500, ...b, layer1: { ...b.layer1 }, layer2: { ...b.layer2 } }
+        }),
         lastResult: null,
         lastFlowResult: null,
         history: [],
@@ -97,11 +100,14 @@ function loadState(): AppState {
     return {
       ...defaultState,
       ...parsed,
-      storages: (parsed.storages ?? []).map(s => ({
-        width: 600,
-        depth: 500,
-        ...(s as any),
-      })),
+      storages: (parsed.storages ?? []).map(s => {
+        const b = s as any
+        return {
+          width: 600, depth: 500, ...b,
+          layer1: { ...b.layer1 },
+          layer2: { ...b.layer2 },
+        }
+      }),
       lastResult: null,
       lastFlowResult: null,
     }

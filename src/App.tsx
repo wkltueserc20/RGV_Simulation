@@ -1,5 +1,10 @@
-import { useCallback, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import type { StepResult } from './types'
+
+// Lazy-load SimView3D so Three.js (~170 KB gzip) only loads when switched to 3D
+const SimView3D = lazy(() => import('./components/SimView3D'))
+
+type ViewMode = '2d' | '3d'
 
 /** Convert sequential steps (all startAt=0) to animation-ready steps with cumulative startAt */
 function withCumulativeStartAt(steps: StepResult[]): StepResult[] {
@@ -33,6 +38,7 @@ function SimulationPage() {
   const [openStorageId, setOpenStorageId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [importError, setImportError] = useState('')
+  const [viewMode, setViewMode] = useState<ViewMode>('2d')
 
   const exportConfig = useCallback(() => {
     const data = JSON.stringify({ version: 1, rgv: state.rgv, track: state.track, storages: state.storages }, null, 2)
@@ -69,7 +75,7 @@ function SimulationPage() {
     }
     input.click()
   }, [dispatch])
-  // For flow mode: track which step is currently animating (for SVG highlighting)
+
   const [flowAnimStepIndex, setFlowAnimStepIndex] = useState(0)
 
   const handleStorageClick = useCallback((id: string) => {
@@ -88,7 +94,11 @@ function SimulationPage() {
   const pickLayerData = result ? (result.pickLayer === 1 ? pickStorage?.layer1 : pickStorage?.layer2) : undefined
   const placeLayerData = result ? (result.placeLayer === 1 ? placeStorage?.layer1 : placeStorage?.layer2) : undefined
 
-  const onSingleFrame = useCallback((s: AnimationState) => setAnimState(s), [])
+  // Simulation always treats the pick storage as having goods — no persistent state needed.
+  // pickLayerHasGoods=true makes the cargo box appear on the fork during carrying phases ④-⑩.
+  const onSingleFrame = useCallback((s: AnimationState) => {
+    setAnimState({ ...s, pickLayerHasGoods: true })
+  }, [])
 
   const singlePlayer = useAnimationPlayer({
     steps: animSteps,
@@ -109,20 +119,36 @@ function SimulationPage() {
 
   // ── Flow mode ──
   const flowResult = state.lastFlowResult
-  const flowAnimSteps = useMemo(() => {
-    if (!flowResult) return null
-    return flowResult.steps
-      .map(sr => {
-        const pick = state.storages.find(s => s.id === sr.pickStorageId)
-        const place = state.storages.find(s => s.id === sr.placeStorageId)
-        if (!pick || !place) return null
-        return { stepResult: sr, pickStorage: pick, placeStorage: place, travelHeight: state.rgv.travelHeight }
-      })
-      .filter((x): x is NonNullable<typeof x> => x !== null)
-  }, [flowResult, state.storages, state.rgv.travelHeight])
+
+  // Snapshot storages at the moment flowResult changes — animation positions don't
+  // depend on hasGoods, so we must NOT re-derive flowAnimSteps whenever a storage
+  // hasGoods update is dispatched (that would reset the player mid-animation).
+  type FlowAnimStep = {
+    stepResult: NonNullable<typeof flowResult>['steps'][number]
+    pickStorage: typeof state.storages[number]
+    placeStorage: typeof state.storages[number]
+    travelHeight: number
+  }
+  const [flowAnimSteps, setFlowAnimSteps] = useState<FlowAnimStep[] | null>(null)
+
+  useEffect(() => {
+    if (!flowResult) { setFlowAnimSteps(null); return }
+    setFlowAnimSteps(
+      flowResult.steps
+        .map(sr => {
+          const pick = state.storages.find(s => s.id === sr.pickStorageId)
+          const place = state.storages.find(s => s.id === sr.placeStorageId)
+          if (!pick || !place) return null
+          return { stepResult: sr, pickStorage: pick, placeStorage: place, travelHeight: state.rgv.travelHeight }
+        })
+        .filter((x): x is FlowAnimStep => x !== null)
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flowResult, state.rgv.travelHeight])  // intentionally excludes state.storages
 
   const onFlowFrame = useCallback((s: AnimationState, idx: number) => {
-    setAnimState(s)
+    // pickLayerHasGoods=true: cargo box always visible on fork during carrying phases ④-⑩
+    setAnimState({ ...s, pickLayerHasGoods: true })
     setFlowAnimStepIndex(idx)
   }, [])
 
@@ -141,7 +167,6 @@ function SimulationPage() {
   const totalTime = isFlowMode ? flowPlayer.totalTime : singleTotalTime
   const hasResult = isFlowMode ? !!flowResult : !!result
 
-  // SVG highlight IDs — for flow mode show current animated step's pick/place
   const svgPickId = isFlowMode
     ? (flowResult?.steps[flowAnimStepIndex]?.pickStorageId ?? '')
     : (result?.pickStorageId ?? '')
@@ -157,48 +182,71 @@ function SimulationPage() {
   }, [singlePlayer, flowPlayer])
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-2 flex items-center gap-3">
-        <div className="text-lg font-bold text-blue-700">RGV 模擬系統</div>
-        <div className="text-xs text-gray-400">Rail Guided Vehicle Simulator</div>
+    <div className="h-screen bg-hmi-base flex flex-col font-sans">
+
+      {/* ── Header ──────────────────────────────────────── */}
+      <header className="bg-hmi-panel border-b border-hmi-border px-4 py-2 flex items-center gap-3 shrink-0 shadow-panel">
+        {/* Logo mark */}
+        <div className="flex items-center gap-2.5">
+          <div className="w-6 h-6 rounded-sm bg-hmi-accent/20 border border-hmi-accent/40 flex items-center justify-center">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="1" y="5" width="12" height="4" rx="1" fill="#00C8FF" opacity="0.3" />
+              <rect x="1" y="5" width="12" height="4" rx="1" stroke="#00C8FF" strokeWidth="0.8" />
+              <rect x="4" y="3" width="3" height="8" rx="0.5" fill="#00C8FF" opacity="0.6" />
+              <circle cx="7" cy="7" r="1.2" fill="#00C8FF" />
+            </svg>
+          </div>
+          <div>
+            <div className="text-sm font-bold font-display tracking-widest hmi-title-shimmer leading-none">
+              RGV 模擬系統
+            </div>
+            <div className="text-[10px] text-hmi-muted font-mono tracking-widest leading-tight mt-0.5">
+              RAIL GUIDED VEHICLE SIMULATOR
+            </div>
+          </div>
+        </div>
+
+        {/* Status dot */}
+        <div className="flex items-center gap-1.5 ml-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-hmi-success shadow-glow-y" />
+          <span className="text-[10px] text-hmi-muted font-mono tracking-wide">READY</span>
+        </div>
+
         <div className="ml-auto flex items-center gap-2">
           {importError && (
-            <span className="text-xs text-red-500">{importError}</span>
+            <span className="text-xs text-hmi-error font-mono bg-hmi-error/10 border border-hmi-error/30 px-2 py-0.5 rounded">
+              {importError}
+            </span>
           )}
-          <button
-            onClick={exportConfig}
-            className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
-          >
-            ↓ 匯出設定
+          <button onClick={exportConfig} className="hmi-btn-ghost">
+            ↓ 匯出
           </button>
-          <button
-            onClick={importConfig}
-            className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
-          >
-            ↑ 匯入設定
+          <button onClick={importConfig} className="hmi-btn-ghost">
+            ↑ 匯入
           </button>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left: Config Panel */}
-        <aside className={`bg-white border-r border-gray-200 flex flex-col flex-shrink-0 transition-all duration-200 ${sidebarOpen ? 'w-80' : 'w-12'}`}>
+
+        {/* ── Left sidebar ────────────────────────────── */}
+        <aside className={`bg-hmi-panel border-r border-hmi-border flex flex-col flex-shrink-0 transition-all duration-200 ${sidebarOpen ? 'w-80' : 'w-12'}`}>
           {sidebarOpen ? (
             <>
-              <div className="flex border-b border-gray-200 shrink-0">
+              {/* Tab bar */}
+              <div className="flex border-b border-hmi-border shrink-0">
                 {([
-                  { key: 'rgv', label: 'RGV 設定' },
-                  { key: 'track', label: '軌道' },
+                  { key: 'rgv',     label: 'RGV' },
+                  { key: 'track',   label: '軌道' },
                   { key: 'storage', label: `庫位 (${state.storages.length})` },
                 ] as { key: SideTab; label: string }[]).map(t => (
                   <button
                     key={t.key}
                     onClick={() => setSideTab(t.key)}
-                    className={`flex-1 py-2 text-xs font-semibold transition-colors ${
+                    className={`flex-1 py-2 text-xs font-semibold font-display tracking-wide transition-all duration-150 ${
                       sideTab === t.key
-                        ? 'border-b-2 border-blue-500 text-blue-600'
-                        : 'text-gray-500 hover:text-gray-700'
+                        ? 'border-b-2 border-hmi-accent text-hmi-accent'
+                        : 'text-hmi-secondary hover:text-hmi-primary hover:bg-hmi-elevated'
                     }`}
                   >
                     {t.label}
@@ -206,15 +254,16 @@ function SimulationPage() {
                 ))}
                 <button
                   onClick={() => setSidebarOpen(false)}
-                  className="px-2 text-gray-400 hover:text-gray-600 border-l border-gray-200"
+                  className="px-2 text-hmi-muted hover:text-hmi-secondary hover:bg-hmi-elevated border-l border-hmi-border transition-colors"
                   title="收合側欄"
                 >
                   ◀
                 </button>
               </div>
+
               <div className="flex-1 overflow-y-auto p-3">
-                {sideTab === 'rgv' && <RGVConfigPanel />}
-                {sideTab === 'track' && <TrackConfigPanel />}
+                {sideTab === 'rgv'     && <RGVConfigPanel />}
+                {sideTab === 'track'   && <TrackConfigPanel />}
                 {sideTab === 'storage' && (
                   <StorageManager
                     openStorageId={openStorageId}
@@ -227,7 +276,7 @@ function SimulationPage() {
             <div className="flex flex-col items-center pt-2">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                className="w-8 h-8 flex items-center justify-center text-hmi-muted hover:text-hmi-secondary hover:bg-hmi-elevated rounded transition-colors"
                 title="展開側欄"
               >
                 ▶
@@ -236,22 +285,93 @@ function SimulationPage() {
           )}
         </aside>
 
-        {/* Right: Simulation + Results */}
-        <main className="flex-1 overflow-y-auto p-3 space-y-3">
+        {/* ── Main area ───────────────────────────────── */}
+        <main className="flex-1 overflow-y-auto p-3 space-y-3 bg-hmi-base">
+
           <TaskPanel onResult={handleResult} />
 
-          <div className="bg-white rounded-lg border border-gray-200 p-3 space-y-2">
+          {/* Simulation view */}
+          <div className="bg-hmi-panel rounded-lg border border-hmi-border p-3 space-y-2.5">
+            {/* Header row */}
             <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-700">模擬視圖</div>
-              {isFlowMode && flowResult && (
-                <div className="text-xs text-gray-400">
-                  步驟 {flowAnimStepIndex + 1}/{flowResult.steps.length}
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-4 bg-hmi-accent rounded-full" />
+                <span className="hmi-title">模擬視圖</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {isFlowMode && flowResult && (
+                  <div className="text-xs text-hmi-secondary font-mono bg-hmi-card border border-hmi-border px-2 py-0.5 rounded">
+                    STEP&nbsp;
+                    <span className="text-hmi-accent">{flowAnimStepIndex + 1}</span>
+                    &nbsp;/&nbsp;{flowResult.steps.length}
+                  </div>
+                )}
+                {/* 2D / 3D view toggle */}
+                <div className="flex rounded border border-hmi-border overflow-hidden text-xs">
+                  {(['2d', '3d'] as ViewMode[]).map((m, i) => (
+                    <button
+                      key={m}
+                      onClick={() => setViewMode(m)}
+                      className={`px-2.5 py-0.5 font-display tracking-widest uppercase transition-all duration-150 ${
+                        i > 0 ? 'border-l border-hmi-border' : ''
+                      } ${
+                        viewMode === m
+                          ? 'bg-hmi-accent text-hmi-base font-bold shadow-glow-sm'
+                          : 'text-hmi-secondary hover:bg-hmi-elevated hover:text-hmi-primary'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
             </div>
 
-            <TopViewSVG state={state} anim={animState} highlightPickId={svgPickId} highlightPlaceId={svgPlaceId} onStorageClick={handleStorageClick} />
+            {/* 2D view: TopView + SideView */}
+            {viewMode === '2d' && (
+              <>
+                <TopViewSVG
+                  state={state}
+                  anim={animState}
+                  highlightPickId={svgPickId}
+                  highlightPlaceId={svgPlaceId}
+                  onStorageClick={handleStorageClick}
+                />
+                <div className="flex gap-2 items-start">
+                  <div className="w-72 flex-shrink-0">
+                    <SideViewSVG
+                      state={state}
+                      anim={animState}
+                      flowStepIndex={isFlowMode ? flowAnimStepIndex : undefined}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
+            {/* 3D view: React Three Fiber scene */}
+            {viewMode === '3d' && (
+              <Suspense
+                fallback={
+                  <div className="w-full border border-hmi-border rounded-lg flex items-center justify-center"
+                       style={{ height: '340px', background: '#F2F5F9' }}>
+                    <div className="flex items-center gap-2 text-hmi-secondary font-mono text-xs">
+                      <span className="w-2 h-2 rounded-full bg-hmi-accent animate-pulse" />
+                      載入 3D 場景...
+                    </div>
+                  </div>
+                }
+              >
+                <SimView3D
+                  state={state}
+                  anim={animState}
+                  highlightPickId={svgPickId}
+                  highlightPlaceId={svgPlaceId}
+                />
+              </Suspense>
+            )}
+
+            {/* Animation controls — always visible regardless of view mode */}
             <AnimationControls
               playing={player.playing}
               elapsed={player.elapsed}
@@ -263,18 +383,13 @@ function SimulationPage() {
               onReset={player.reset}
               onSpeed={player.setSpeed}
             />
-
-            <div className="flex gap-2 items-start">
-              <div className="w-72 flex-shrink-0">
-                <SideViewSVG state={state} anim={animState} flowStepIndex={isFlowMode ? flowAnimStepIndex : undefined} />
-              </div>
-            </div>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
             <TimeBreakdown />
             <HistoryLog />
           </div>
+
         </main>
       </div>
     </div>

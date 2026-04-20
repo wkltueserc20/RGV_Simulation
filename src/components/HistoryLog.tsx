@@ -4,18 +4,31 @@ import type { SingleHistoryEntry, FlowHistoryEntry, HistoryEntry } from '../type
 
 const fmt = (s: number) => s.toFixed(2) + 's'
 
+function TimeTag({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="text-[10px] font-mono text-hmi-muted">
+      {label}&thinsp;<span className="text-hmi-secondary">{value}</span>
+    </span>
+  )
+}
+
 function SingleRow({ h }: { h: SingleHistoryEntry }) {
   return (
-    <div className="text-xs bg-gray-50 rounded p-1.5 flex justify-between items-center">
-      <div>
-        <span className="font-medium">{h.pickStorageName}-{h.pickLayer}層</span>
-        {' → '}
-        <span className="font-medium">{h.placeStorageName}-{h.placeLayer}層</span>
-        <div className="text-gray-400 mt-0.5">
-          序列 {fmt(h.sequentialTotal)} | 疊加 {fmt(h.concurrentTotal)}
+    <div className="text-xs bg-hmi-card border border-hmi-border/60 rounded px-2 py-1.5 flex justify-between items-start gap-2">
+      <div className="min-w-0">
+        <div className="text-hmi-primary font-medium truncate">
+          <span>{h.pickStorageName}</span>
+          <span className="text-hmi-muted">-{h.pickLayer}L</span>
+          <span className="text-hmi-muted mx-1">→</span>
+          <span>{h.placeStorageName}</span>
+          <span className="text-hmi-muted">-{h.placeLayer}L</span>
+        </div>
+        <div className="flex gap-2 mt-0.5">
+          <TimeTag label="序列" value={fmt(h.sequentialTotal)} />
+          <TimeTag label="疊加" value={fmt(h.concurrentTotal)} />
         </div>
       </div>
-      <div className="text-gray-400 text-right shrink-0 ml-2">
+      <div className="text-hmi-muted text-[10px] font-mono shrink-0">
         {new Date(h.timestamp).toLocaleTimeString('zh-TW', {
           hour: '2-digit', minute: '2-digit', second: '2-digit',
         })}
@@ -28,19 +41,19 @@ function FlowRow({ h }: { h: FlowHistoryEntry }) {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="text-xs bg-gray-50 rounded overflow-hidden">
+    <div className="text-xs bg-hmi-card border border-hmi-border/60 rounded overflow-hidden">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex justify-between items-center p-1.5 hover:bg-gray-100"
+        className="w-full flex justify-between items-center px-2 py-1.5 hover:bg-hmi-elevated transition-colors"
       >
         <div className="flex items-center gap-1.5">
-          <span className="text-gray-400">{open ? '▼' : '▶'}</span>
-          <span className="font-medium text-gray-700">流程任務</span>
-          <span className="text-gray-400">({h.steps.length} 步驟)</span>
+          <span className="text-hmi-muted text-[10px]">{open ? '▼' : '▶'}</span>
+          <span className="font-semibold font-display tracking-wide text-hmi-primary">流程任務</span>
+          <span className="text-hmi-muted text-[10px] font-mono">({h.steps.length} 步驟)</span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-blue-600 font-mono">{fmt(h.grandConcurrentTotal)}</span>
-          <span className="text-gray-400">
+          <span className="text-hmi-accent font-mono tabular-nums">{fmt(h.grandConcurrentTotal)}</span>
+          <span className="text-hmi-muted text-[10px] font-mono">
             {new Date(h.timestamp).toLocaleTimeString('zh-TW', {
               hour: '2-digit', minute: '2-digit', second: '2-digit',
             })}
@@ -49,27 +62,30 @@ function FlowRow({ h }: { h: FlowHistoryEntry }) {
       </button>
 
       {open && (
-        <div className="border-t border-gray-200 px-2 py-1 space-y-0.5">
+        <div className="border-t border-hmi-border/40 px-2 py-1.5 space-y-0.5 bg-hmi-elevated/30">
           {h.steps.map((step, i) => (
             <div key={i}>
               <div className="flex justify-between py-0.5">
-                <span>
-                  <span className="text-gray-400 mr-1">{i + 1}.</span>
-                  <span className="font-medium">{step.pickStorageName}-{step.pickLayer}層</span>
-                  {' → '}
-                  <span className="font-medium">{step.placeStorageName}-{step.placeLayer}層</span>
+                <span className="text-hmi-secondary">
+                  <span className="text-hmi-muted font-mono mr-1">{String(i + 1).padStart(2, '0')}.</span>
+                  <span className="font-medium text-hmi-primary">{step.pickStorageName}</span>
+                  <span className="text-hmi-muted">-{step.pickLayer}L</span>
+                  <span className="text-hmi-muted mx-1">→</span>
+                  <span className="font-medium text-hmi-primary">{step.placeStorageName}</span>
+                  <span className="text-hmi-muted">-{step.placeLayer}L</span>
                 </span>
-                <span className="font-mono text-gray-600 shrink-0 ml-2">{fmt(step.concurrentTotal)}</span>
+                <span className="font-mono text-hmi-primary tabular-nums shrink-0 ml-2">{fmt(step.concurrentTotal)}</span>
               </div>
               {step.nextPickStorageName && (
-                <div className="text-gray-400 pl-4 py-0.5 text-xs">
-                  移動 {step.placeStorageName} → {step.nextPickStorageName}
+                <div className="text-hmi-muted pl-6 text-[10px] font-mono">
+                  ↓ {step.placeStorageName} → {step.nextPickStorageName}
                 </div>
               )}
             </div>
           ))}
-          <div className="border-t border-gray-100 pt-1 flex justify-between text-gray-500">
-            <span>序列 {fmt(h.grandSequentialTotal)} | 疊加 {fmt(h.grandConcurrentTotal)}</span>
+          <div className="border-t border-hmi-border/40 pt-1 flex gap-3 text-hmi-muted">
+            <TimeTag label="序列" value={fmt(h.grandSequentialTotal)} />
+            <TimeTag label="疊加" value={fmt(h.grandConcurrentTotal)} />
           </div>
         </div>
       )}
@@ -91,9 +107,12 @@ export default function HistoryLog() {
 
   if (state.history.length === 0) {
     return (
-      <div className="border border-gray-200 rounded-lg p-3">
-        <div className="text-sm font-semibold text-gray-700 mb-1">歷史紀錄</div>
-        <p className="text-xs text-gray-400 text-center py-2">尚無紀錄</p>
+      <div className="bg-hmi-panel border border-hmi-border rounded-lg p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-1 h-4 bg-hmi-secondary rounded-full" />
+          <span className="hmi-title">歷史紀錄</span>
+        </div>
+        <p className="text-xs text-hmi-muted text-center py-4 font-mono">— 尚無紀錄 —</p>
       </div>
     )
   }
@@ -108,31 +127,34 @@ export default function HistoryLog() {
   }
 
   return (
-    <div className="border border-gray-200 rounded-lg p-3">
-      <div className="flex justify-between items-center mb-2">
-        <div className="text-sm font-semibold text-gray-700">
-          歷史紀錄 ({state.history.length})
+    <div className="bg-hmi-panel border border-hmi-border rounded-lg p-3">
+      <div className="flex justify-between items-center mb-2.5">
+        <div className="flex items-center gap-2">
+          <div className="w-1 h-4 bg-hmi-secondary rounded-full" />
+          <span className="hmi-title">歷史紀錄</span>
+          <span className="text-[10px] font-mono text-hmi-muted bg-hmi-card border border-hmi-border px-1.5 py-px rounded">
+            {state.history.length}
+          </span>
         </div>
         <div className="flex gap-1">
           {confirmClear && (
             <button
               onClick={() => setConfirmClear(false)}
-              className="text-xs px-2 py-0.5 rounded bg-gray-200 hover:bg-gray-300"
+              className="hmi-btn-ghost"
             >
               取消
             </button>
           )}
           <button
             onClick={handleClear}
-            className={`text-xs px-2 py-0.5 rounded ${
-              confirmClear ? 'bg-red-500 text-white' : 'bg-red-100 text-red-600 hover:bg-red-200'
-            }`}
+            className={confirmClear ? 'hmi-btn-warning' : 'hmi-btn-danger'}
           >
-            {confirmClear ? '確認清除' : '清除歷史'}
+            {confirmClear ? '確認清除' : '清除'}
           </button>
         </div>
       </div>
-      <div className="space-y-1 max-h-48 overflow-y-auto">
+
+      <div className="space-y-1 max-h-52 overflow-y-auto pr-0.5">
         {state.history.map(h => (
           isFlowEntry(h)
             ? <FlowRow key={h.id} h={h} />

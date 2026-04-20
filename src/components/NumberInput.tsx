@@ -10,10 +10,6 @@ interface Props {
   disabled?: boolean
 }
 
-/**
- * Controlled number input that maintains a local string for display,
- * and calls onChange whenever the typed value is a valid number within bounds.
- */
 export default function NumberInput({
   value,
   onChange,
@@ -25,7 +21,6 @@ export default function NumberInput({
 }: Props) {
   const [raw, setRaw] = useState(String(value))
 
-  // Sync display when external state changes (e.g. localStorage restore)
   useEffect(() => {
     setRaw(String(value))
   }, [value])
@@ -57,9 +52,7 @@ export default function NumberInput({
       max={max}
       step={step}
       disabled={disabled}
-      className={`border rounded px-1 py-0.5 text-sm ${
-        isInvalid ? 'border-red-400 bg-red-50' : 'border-gray-300'
-      } ${className}`}
+      className={`hmi-input ${isInvalid ? 'hmi-input-invalid' : ''} ${className}`}
     />
   )
 }

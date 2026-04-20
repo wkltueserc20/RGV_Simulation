@@ -33,13 +33,29 @@ Rail Guided Vehicle 行走模擬與時間計算工具
 ⑫ 降至行走高度
 ```
 
-## 本地執行
+## 下載桌面版
+
+前往 [Releases](https://github.com/wkltueserc20/RGV_Simulation/releases) 下載最新版 `rgv-simulation.exe`，直接執行即可（需 Windows 10/11，已預裝 WebView2）。
+
+## 本地執行（Web 版）
 
 ```bash
 npm install
 npm run dev
 ```
 
+## 桌面版開發（Tauri + Rust）
+
+前置需求：[Rust（rustup）](https://rustup.rs)
+
+```bash
+# 開發模式（視窗 + hot reload）
+npm run tauri:dev
+
+# 打包發布（產出於 src-tauri/target/release/）
+npm run tauri:build
+```
+
 ## 技術棧
 
-React 18 · TypeScript · SVG · Tailwind CSS · Vite
+React 18 · TypeScript · SVG · Tailwind CSS · Vite · Tauri 2（Rust）

@@ -1,3 +1,190 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    height: 100%;
+    background-color: #F2F5F9;
+    color: #1A2B3C;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  /* Thin custom scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: #EEF2F7; }
+  ::-webkit-scrollbar-thumb { background: #CBD5E0; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: #8A9BB0; }
+
+  /* Remove number input spinners */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] { -moz-appearance: textfield; }
+
+  /* Select arrow */
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%234A6080' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-position: right 6px center;
+    background-repeat: no-repeat;
+    background-size: 14px;
+    padding-right: 24px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+
+  input[type="radio"] {
+    accent-color: #0078D4;
+  }
+}
+
+@layer components {
+  /* ── Input / Select ──────────────────────────────────── */
+  .hmi-input {
+    @apply w-full bg-white border border-hmi-border rounded px-2 py-1
+           text-sm text-hmi-primary font-mono
+           focus:outline-none focus:border-hmi-accent
+           focus:ring-1 focus:ring-hmi-accent/20
+           transition-colors duration-150;
+  }
+
+  .hmi-input-invalid {
+    @apply border-hmi-error/70 bg-hmi-error/5 focus:border-hmi-error focus:ring-hmi-error/20;
+  }
+
+  .hmi-select {
+    @apply w-full bg-white border border-hmi-border rounded px-2 py-1
+           text-sm text-hmi-primary
+           focus:outline-none focus:border-hmi-accent
+           transition-colors duration-150;
+  }
+
+  /* ── Buttons ─────────────────────────────────────────── */
+  .hmi-btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5
+           bg-hmi-accent text-white
+           rounded px-4 py-1.5 text-sm font-semibold
+           font-display tracking-wider
+           hover:brightness-110 active:scale-95
+           shadow-glow-sm
+           transition-all duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none;
+  }
+
+  .hmi-btn-success {
+    @apply inline-flex items-center justify-center gap-1.5
+           bg-hmi-success text-white
+           rounded px-4 py-1.5 text-sm font-semibold
+           font-display tracking-wider
+           hover:brightness-110 active:scale-95
+           transition-all duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .hmi-btn-ghost {
+    @apply inline-flex items-center justify-center gap-1
+           border border-hmi-border text-hmi-secondary bg-white
+           rounded px-3 py-1 text-xs
+           hover:bg-hmi-elevated hover:text-hmi-primary hover:border-hmi-border-active/40
+           transition-all duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .hmi-btn-icon {
+    @apply inline-flex items-center justify-center
+           bg-hmi-elevated border border-hmi-border text-hmi-secondary
+           rounded px-2 py-1 text-sm
+           hover:bg-hmi-border hover:text-hmi-primary
+           transition-all duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .hmi-btn-danger {
+    @apply inline-flex items-center justify-center
+           bg-hmi-error/10 border border-hmi-error/30 text-hmi-error
+           rounded px-2 py-0.5 text-xs
+           hover:bg-hmi-error/20 hover:border-hmi-error/50
+           transition-all duration-150;
+  }
+
+  .hmi-btn-warning {
+    @apply inline-flex items-center justify-center
+           bg-hmi-warning/10 border border-hmi-warning/30 text-hmi-warning
+           rounded px-2 py-0.5 text-xs font-semibold
+           hover:bg-hmi-warning/20
+           transition-all duration-150;
+  }
+
+  /* ── Axis Badges ─────────────────────────────────────── */
+  .axis-badge-x {
+    @apply inline-block text-xs px-1.5 py-px rounded-sm font-mono font-semibold
+           bg-hmi-accent/10 text-hmi-axis-x border border-hmi-accent/30;
+  }
+
+  .axis-badge-z {
+    @apply inline-block text-xs px-1.5 py-px rounded-sm font-mono font-semibold
+           bg-hmi-warning/10 text-hmi-axis-z border border-hmi-warning/30;
+  }
+
+  .axis-badge-y {
+    @apply inline-block text-xs px-1.5 py-px rounded-sm font-mono font-semibold
+           bg-hmi-success/10 text-hmi-axis-y border border-hmi-success/30;
+  }
+
+  /* ── Typography ──────────────────────────────────────── */
+  .hmi-title {
+    @apply text-sm font-semibold text-hmi-primary font-display tracking-wide;
+  }
+
+  .hmi-label {
+    @apply text-xs text-hmi-secondary;
+  }
+
+  .hmi-data {
+    @apply font-mono text-hmi-accent;
+  }
+
+  /* ── Collapsible ─────────────────────────────────────── */
+  .hmi-collapsible-trigger {
+    @apply w-full flex items-center justify-between px-2 py-1.5
+           text-xs font-semibold font-display tracking-wide
+           text-hmi-secondary
+           hover:bg-hmi-elevated hover:text-hmi-primary
+           transition-all duration-150;
+  }
+}
+
+/* ── Animated progress glow ─────────────────────────────── */
+@keyframes progress-glow {
+  0%, 100% { box-shadow: 0 0 4px rgba(0,120,212,0.3); }
+  50%       { box-shadow: 0 0 10px rgba(0,120,212,0.5), 0 0 20px rgba(0,120,212,0.15); }
+}
+.progress-playing { animation: progress-glow 1.8s ease-in-out infinite; }
+
+/* ── Active storage card pulse ───────────────────────────── */
+@keyframes border-pulse {
+  0%, 100% { border-color: rgba(0,120,212,0.4); }
+  50%       { border-color: rgba(0,120,212,0.8); }
+}
+.storage-card-active { animation: border-pulse 2.5s ease-in-out infinite; }
+
+/* ── Header title shimmer ────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.hmi-title-shimmer {
+  background: linear-gradient(90deg, #0055A0 0%, #0078D4 40%, #40A0F0 60%, #0078D4 80%, #0055A0 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s linear infinite;
+}

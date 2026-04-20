@@ -18,32 +18,36 @@ const defaultLayer: StorageLayer = {
 
 function LayerForm({
   label,
+  accent,
   value,
   onChange,
 }: {
   label: string
+  accent: string
   value: StorageLayer
   onChange: (v: StorageLayer) => void
 }) {
   const fields: { key: keyof StorageLayer; label: string }[] = [
-    { key: 'pickHeight', label: '取料高度' },
-    { key: 'pickDepth', label: '取料深度' },
+    { key: 'pickHeight',  label: '取料高度' },
+    { key: 'pickDepth',   label: '取料深度' },
     { key: 'placeHeight', label: '放料高度' },
-    { key: 'placeDepth', label: '放料深度' },
+    { key: 'placeDepth',  label: '放料深度' },
   ]
   return (
-    <div className="mt-1">
-      <div className="text-xs font-semibold text-blue-600 mb-1">{label}</div>
+    <div className="mt-1.5">
+      <div className="mb-1">
+        <div className={`text-[10px] font-semibold font-display tracking-widest ${accent}`}>{label}</div>
+      </div>
       <div className="grid grid-cols-2 gap-1">
         {fields.map(f => (
-          <label key={f.key} className="flex flex-col">
-            <span className="text-xs text-gray-400">{f.label} (mm)</span>
+          <label key={f.key} className="flex flex-col gap-0.5">
+            <span className="hmi-label">{f.label} (mm)</span>
             <NumberInput
               value={value[f.key]}
               min={0}
               step={10}
               onChange={n => onChange({ ...value, [f.key]: n })}
-              className="w-full text-xs"
+              className="w-full"
             />
           </label>
         ))}
@@ -58,14 +62,12 @@ export default function StorageCard({ storage, isOpen, onToggle }: Props) {
   const [name, setName] = useState(storage.name)
   const cardRef = useRef<HTMLDivElement>(null)
 
-  // Scroll into view when opened externally (e.g. SVG click)
   useEffect(() => {
     if (isOpen) {
       cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
   }, [isOpen])
 
-  // Keep local name in sync if storage name changes externally
   useEffect(() => {
     setName(storage.name)
   }, [storage.name])
@@ -90,77 +92,82 @@ export default function StorageCard({ storage, isOpen, onToggle }: Props) {
   }
 
   return (
-    <div ref={cardRef} className={`rounded mb-1 text-sm border-l-2 ${isOpen ? 'border-blue-400 border border-blue-200' : 'border-transparent border border-gray-200'}`}>
-      <div className={`flex items-center justify-between px-2 py-1.5 ${isOpen ? 'bg-blue-50' : 'bg-gray-50'}`}>
+    <div
+      ref={cardRef}
+      className={`rounded mb-1 text-sm border-l-2 overflow-hidden transition-all duration-200 ${
+        isOpen
+          ? 'border-l-hmi-accent border border-hmi-accent/30 storage-card-active'
+          : 'border-l-hmi-border border border-hmi-border/50 hover:border-hmi-border'
+      }`}
+    >
+      {/* Header */}
+      <div className={`flex items-center justify-between px-2 py-1.5 transition-colors ${
+        isOpen ? 'bg-hmi-accent/8' : 'bg-hmi-card hover:bg-hmi-elevated'
+      }`}>
         <button
           className="flex-1 text-left font-medium truncate"
           onClick={() => { onToggle(); setConfirmDelete(false) }}
         >
-          <span className={isOpen ? 'text-blue-700' : ''}>{storage.name || '（未命名）'}</span>
-          <span className="text-xs text-gray-400 ml-2">
-            {storage.side === 'left' ? '左' : '右'} | X:{storage.position} | {storage.layers}層 | {storage.width}×{storage.depth}mm
+          <span className={isOpen ? 'text-hmi-accent' : 'text-hmi-primary'}>
+            {storage.name || '（未命名）'}
+          </span>
+          <span className="text-[10px] text-hmi-muted font-mono ml-2">
+            {storage.side === 'left' ? 'L' : 'R'} | X:{storage.position} | {storage.layers}層 | {storage.width}×{storage.depth}
           </span>
         </button>
         <div className="flex gap-1 shrink-0">
           <button
             onClick={() => { onToggle(); setConfirmDelete(false) }}
-            className="text-xs px-1.5 py-0.5 rounded bg-gray-200 hover:bg-gray-300"
+            className="hmi-btn-ghost text-[10px] px-1.5 py-0.5"
           >
             {isOpen ? '收' : '編輯'}
           </button>
           <button
             onClick={handleDuplicate}
-            className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-600 hover:bg-blue-200"
+            className="text-[10px] px-1.5 py-0.5 rounded bg-hmi-accent/10 border border-hmi-accent/25 text-hmi-accent hover:bg-hmi-accent/20 transition-colors"
             title="複製此庫位"
           >
             複製
           </button>
           <button
             onClick={() => setConfirmDelete(true)}
-            className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-600 hover:bg-red-200"
+            className="hmi-btn-danger text-[10px] px-1.5 py-0.5"
           >
             刪除
           </button>
         </div>
       </div>
 
+      {/* Confirm delete bar */}
       {confirmDelete && (
-        <div className="flex items-center justify-between px-2 py-1.5 bg-red-50 border-t border-red-200 text-xs">
-          <span className="text-red-600">確定要刪除「{storage.name || '未命名'}」？</span>
+        <div className="flex items-center justify-between px-2 py-1.5 bg-hmi-error/8 border-t border-hmi-error/25 text-xs">
+          <span className="text-hmi-error font-mono">確定刪除「{storage.name || '未命名'}」？</span>
           <div className="flex gap-1">
-            <button
-              onClick={handleDelete}
-              className="px-2 py-0.5 rounded bg-red-500 text-white hover:bg-red-600"
-            >
+            <button onClick={handleDelete} className="hmi-btn-warning px-2 py-0.5 text-[10px]">
               確認刪除
             </button>
-            <button
-              onClick={() => setConfirmDelete(false)}
-              className="px-2 py-0.5 rounded bg-gray-200 hover:bg-gray-300 text-gray-600"
-            >
+            <button onClick={() => setConfirmDelete(false)} className="hmi-btn-ghost px-2 py-0.5 text-[10px]">
               取消
             </button>
           </div>
         </div>
       )}
 
+      {/* Expanded form */}
       {isOpen && (
-        <div className="p-2 space-y-2">
+        <div className="p-2 space-y-2 bg-hmi-base/30">
           <div className="grid grid-cols-2 gap-1">
-            <label className="flex flex-col col-span-2">
-              <span className="text-xs text-gray-400">名稱</span>
+            <label className="flex flex-col gap-0.5 col-span-2">
+              <span className="hmi-label">名稱</span>
               <input
                 type="text"
                 value={name}
-                onChange={e => {
-                  setName(e.target.value)
-                  update({ name: e.target.value })
-                }}
-                className="border border-gray-300 rounded px-1 py-0.5 text-sm"
+                onChange={e => { setName(e.target.value); update({ name: e.target.value }) }}
+                className="hmi-input"
               />
             </label>
-            <label className="flex flex-col">
-              <span className="text-xs text-gray-400">X 位置 (mm)</span>
+            <label className="flex flex-col gap-0.5">
+              <span className="hmi-label">X 位置 (mm)</span>
               <NumberInput
                 value={storage.position}
                 min={0}
@@ -170,62 +177,54 @@ export default function StorageCard({ storage, isOpen, onToggle }: Props) {
                 className="w-full"
               />
             </label>
-            <label className="flex flex-col">
-              <span className="text-xs text-gray-400">側邊</span>
+            <label className="flex flex-col gap-0.5">
+              <span className="hmi-label">側邊</span>
               <select
                 value={storage.side}
                 onChange={e => update({ side: e.target.value as StorageSide })}
-                className="border border-gray-300 rounded px-1 py-0.5 text-sm"
+                className="hmi-select"
               >
                 <option value="left">左側</option>
                 <option value="right">右側</option>
               </select>
             </label>
-            <label className="flex flex-col col-span-2">
-              <span className="text-xs text-gray-400">層數</span>
+            <label className="flex flex-col gap-0.5 col-span-2">
+              <span className="hmi-label">層數</span>
               <select
                 value={storage.layers}
                 onChange={e => update({ layers: parseInt(e.target.value) as LayerCount })}
-                className="border border-gray-300 rounded px-1 py-0.5 text-sm"
+                className="hmi-select"
               >
                 <option value={1}>1 層</option>
                 <option value={2}>2 層</option>
               </select>
             </label>
-            <label className="flex flex-col">
-              <span className="text-xs text-gray-400">寬度 (mm)</span>
-              <NumberInput
-                value={storage.width}
-                min={50}
-                step={50}
-                onChange={n => update({ width: n })}
-                className="w-full"
-              />
+            <label className="flex flex-col gap-0.5">
+              <span className="hmi-label">寬度 (mm)</span>
+              <NumberInput value={storage.width} min={50} step={50} onChange={n => update({ width: n })} className="w-full" />
             </label>
-            <label className="flex flex-col">
-              <span className="text-xs text-gray-400">深度 (mm)</span>
-              <NumberInput
-                value={storage.depth}
-                min={50}
-                step={50}
-                onChange={n => update({ depth: n })}
-                className="w-full"
-              />
+            <label className="flex flex-col gap-0.5">
+              <span className="hmi-label">深度 (mm)</span>
+              <NumberInput value={storage.depth} min={50} step={50} onChange={n => update({ depth: n })} className="w-full" />
             </label>
           </div>
 
-          <LayerForm
-            label="第 1 層"
-            value={storage.layer1}
-            onChange={v => update({ layer1: v })}
-          />
-          {storage.layers === 2 && (
+          <div className="border-t border-hmi-border/40 pt-1">
             <LayerForm
-              label="第 2 層"
-              value={storage.layer2}
-              onChange={v => update({ layer2: v })}
+              label="第 1 層"
+              accent="text-hmi-axis-x"
+              value={storage.layer1}
+              onChange={v => update({ layer1: v })}
             />
-          )}
+            {storage.layers === 2 && (
+              <LayerForm
+                label="第 2 層"
+                accent="text-hmi-axis-z"
+                value={storage.layer2}
+                onChange={v => update({ layer2: v })}
+              />
+            )}
+          </div>
         </div>
       )}
     </div>

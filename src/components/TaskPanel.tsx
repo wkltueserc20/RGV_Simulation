@@ -27,27 +27,29 @@ function StorageSelect({
   const sel = storages.find(s => s.id === value)
   return (
     <div className="flex gap-1 items-end">
-      <label className="flex flex-col">
-        <span className="text-xs text-gray-400">{label}</span>
+      <label className="flex flex-col gap-0.5">
+        <span className="hmi-label">{label}</span>
         <select
           value={value}
           onChange={e => { onId(e.target.value); onLayer(1) }}
-          className="border border-gray-300 rounded px-1 py-1 text-sm"
+          className="hmi-select min-w-[120px]"
         >
           <option value="">— 選擇 —</option>
-          {storages.map(s => <option key={s.id} value={s.id}>{s.name}  X:{s.position}mm</option>)}
+          {storages.map(s => (
+            <option key={s.id} value={s.id}>{s.name}  X:{s.position}mm</option>
+          ))}
         </select>
       </label>
-      <label className="flex flex-col">
-        <span className="text-xs text-gray-400">層</span>
+      <label className="flex flex-col gap-0.5">
+        <span className="hmi-label">層</span>
         <select
           value={layer}
           onChange={e => onLayer(parseInt(e.target.value) as 1 | 2)}
           disabled={!sel}
-          className="border border-gray-300 rounded px-1 py-1 text-sm w-16 disabled:opacity-50"
+          className="hmi-select w-16 disabled:opacity-40"
         >
-          <option value={1}>第 1 層</option>
-          {sel?.layers === 2 && <option value={2}>第 2 層</option>}
+          <option value={1}>1 層</option>
+          {sel?.layers === 2 && <option value={2}>2 層</option>}
         </select>
       </label>
     </div>
@@ -61,13 +63,11 @@ export default function TaskPanel({ onResult }: Props) {
   const [mode, setMode] = useState<TaskMode>('single')
   const [error, setError] = useState('')
 
-  // Single mode state
-  const [pickId, setPickId] = useState('')
+  const [pickId, setPickId]     = useState('')
   const [pickLayer, setPickLayer] = useState<1 | 2>(1)
-  const [placeId, setPlaceId] = useState('')
+  const [placeId, setPlaceId]   = useState('')
   const [placeLayer, setPlaceLayer] = useState<1 | 2>(1)
 
-  // Flow mode state
   const [flowSteps, setFlowSteps] = useState<FlowStep[]>([
     { pickStorageId: '', pickLayer: 1, placeStorageId: '', placeLayer: 1 },
   ])
@@ -85,10 +85,10 @@ export default function TaskPanel({ onResult }: Props) {
   }
 
   const runSingle = () => {
-    const pickStorage = storages.find(s => s.id === pickId)
+    const pickStorage  = storages.find(s => s.id === pickId)
     const placeStorage = storages.find(s => s.id === placeId)
     if (storages.length === 0) { setError('請先新增庫位'); return }
-    if (!pickStorage) { setError('請選擇取料庫位'); return }
+    if (!pickStorage)  { setError('請選擇取料庫位'); return }
     if (!placeStorage) { setError('請選擇放料庫位'); return }
     setError('')
 
@@ -124,9 +124,9 @@ export default function TaskPanel({ onResult }: Props) {
     dispatch({ type: 'SET_LAST_FLOW_RESULT', payload: result })
 
     const histSteps = result.steps.map((sr, i) => {
-      const pick = storages.find(s => s.id === sr.pickStorageId)
+      const pick  = storages.find(s => s.id === sr.pickStorageId)
       const place = storages.find(s => s.id === sr.placeStorageId)
-      const next = result.steps[i + 1]
+      const next  = result.steps[i + 1]
       const nextPick = next ? storages.find(s => s.id === next.pickStorageId) : undefined
       return {
         pickStorageName: pick?.name ?? '',
@@ -152,20 +152,31 @@ export default function TaskPanel({ onResult }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 px-3 py-2">
+    <div className="bg-hmi-panel rounded-lg border border-hmi-border px-3 py-2.5">
       {/* Mode toggle */}
-      <div className="flex items-center gap-3 mb-2">
-        <span className="text-sm font-semibold text-gray-700">任務設定</span>
-        <div className="flex rounded border border-gray-200 overflow-hidden text-xs">
+      <div className="flex items-center gap-3 mb-2.5">
+        <div className="flex items-center gap-2">
+          <div className="w-1 h-4 bg-hmi-axis-y rounded-full" />
+          <span className="hmi-title">任務設定</span>
+        </div>
+        <div className="flex rounded border border-hmi-border overflow-hidden text-xs">
           <button
             onClick={() => { setMode('single'); setError('') }}
-            className={`px-3 py-1 ${mode === 'single' ? 'bg-blue-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+            className={`px-3 py-1 font-display tracking-wide transition-all duration-150 ${
+              mode === 'single'
+                ? 'bg-hmi-accent text-hmi-base font-semibold'
+                : 'text-hmi-secondary hover:bg-hmi-elevated hover:text-hmi-primary'
+            }`}
           >
             單一任務
           </button>
           <button
             onClick={() => { setMode('flow'); setError('') }}
-            className={`px-3 py-1 ${mode === 'flow' ? 'bg-blue-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+            className={`px-3 py-1 font-display tracking-wide transition-all duration-150 border-l border-hmi-border ${
+              mode === 'flow'
+                ? 'bg-hmi-accent text-hmi-base font-semibold'
+                : 'text-hmi-secondary hover:bg-hmi-elevated hover:text-hmi-primary'
+            }`}
           >
             流程任務
           </button>
@@ -175,13 +186,10 @@ export default function TaskPanel({ onResult }: Props) {
       {/* Single mode */}
       {mode === 'single' && (
         <div className="flex flex-wrap items-end gap-2">
-          <StorageSelect label="取料庫位" value={pickId} layer={pickLayer} onId={setPickId} onLayer={setPickLayer} />
-          <span className="text-gray-300 self-end pb-1.5 shrink-0">→</span>
+          <StorageSelect label="取料庫位" value={pickId}  layer={pickLayer}  onId={setPickId}  onLayer={setPickLayer} />
+          <div className="text-hmi-muted self-end pb-2 shrink-0 font-mono">→</div>
           <StorageSelect label="放料庫位" value={placeId} layer={placeLayer} onId={setPlaceId} onLayer={setPlaceLayer} />
-          <button
-            onClick={runSingle}
-            className="shrink-0 px-4 py-1.5 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded"
-          >
+          <button onClick={runSingle} className="hmi-btn-success shrink-0 self-end">
             ▶ 執行模擬
           </button>
         </div>
@@ -191,8 +199,13 @@ export default function TaskPanel({ onResult }: Props) {
       {mode === 'flow' && (
         <div className="space-y-1">
           {flowSteps.map((step, i) => (
-            <div key={i} className="flex flex-wrap items-end gap-2 bg-gray-50 rounded px-2 py-1.5">
-              <span className="text-xs font-semibold text-gray-400 self-center w-4 shrink-0">{i + 1}</span>
+            <div
+              key={i}
+              className="flex flex-wrap items-end gap-2 bg-hmi-card border border-hmi-border/60 rounded px-2 py-1.5"
+            >
+              <span className="text-xs font-semibold font-mono text-hmi-muted self-center w-5 shrink-0">
+                {String(i + 1).padStart(2, '0')}
+              </span>
               <StorageSelect
                 label="取料"
                 value={step.pickStorageId}
@@ -200,7 +213,7 @@ export default function TaskPanel({ onResult }: Props) {
                 onId={id => updateFlowStep(i, { pickStorageId: id, pickLayer: 1 })}
                 onLayer={l => updateFlowStep(i, { pickLayer: l })}
               />
-              <span className="text-gray-300 self-end pb-1.5 shrink-0">→</span>
+              <div className="text-hmi-muted self-end pb-2 shrink-0 font-mono">→</div>
               <StorageSelect
                 label="放料"
                 value={step.placeStorageId}
@@ -211,7 +224,7 @@ export default function TaskPanel({ onResult }: Props) {
               {flowSteps.length > 1 && (
                 <button
                   onClick={() => removeFlowStep(i)}
-                  className="self-end pb-1 text-red-400 hover:text-red-600 text-sm shrink-0"
+                  className="self-end pb-1.5 text-hmi-muted hover:text-hmi-error text-sm shrink-0 transition-colors"
                   title="移除步驟"
                 >
                   ✕
@@ -220,23 +233,22 @@ export default function TaskPanel({ onResult }: Props) {
             </div>
           ))}
           <div className="flex gap-2 pt-1">
-            <button
-              onClick={addFlowStep}
-              className="text-xs px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
-            >
+            <button onClick={addFlowStep} className="hmi-btn-ghost">
               + 新增步驟
             </button>
-            <button
-              onClick={runFlow}
-              className="px-4 py-1.5 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded"
-            >
+            <button onClick={runFlow} className="hmi-btn-success">
               ▶ 執行流程
             </button>
           </div>
         </div>
       )}
 
-      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+      {error && (
+        <div className="mt-2 flex items-center gap-1.5 text-xs text-hmi-error font-mono bg-hmi-error/8 border border-hmi-error/25 rounded px-2 py-1">
+          <span>⚠</span>
+          <span>{error}</span>
+        </div>
+      )}
     </div>
   )
 }
